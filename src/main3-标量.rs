@@ -6,7 +6,7 @@ fn main() {
     let num: u32 = "10".parse().expect("Not a number!");
     println!("num is {}", num);
     // rust 的标量类型(Scalar Types)有四种: 整型、浮点型、布尔型和字符型
-    // 1. 整数类型 u32(0-2^31-1),i32(-2^31-2^31-1),u64,i64,u128,i128,isize,usize
+    // 1. 整数类型 u32(0-2^32-1),i32(-2^31-2^31-1),u64,i64,u128,i128,isize,usize
 	// 2. 浮点类型 f32,f64
 	// 整数类型 默认是i32
 	//浮点类型默认是f64
