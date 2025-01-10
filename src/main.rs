@@ -1,21 +1,10 @@
 /*
-# if let
-- 处理值关心一种情况而忽略其他情况的匹配模式
-- 好处是 更少的代码 更少的缩进,更少的模板代码
-- 坏处是放弃了穷举的可能
+# 将模块拆分为不同的模块
+如果模块 mod some_name 之后 跟的是; 符号,那么相应的cargo 就会去对应的文件/文件夹找到对应的代码
+-rust 会从与模块同名的文件中加载内容
+- 模块树的结构不会变化
+- 随着模块组件变大,该技术可以把模块的内容移动到其他文件中
 */
 fn main() {
-    println!("hello world!");
-    let v: Option<u8> = Some(2u8);
-    match v {
-        //我现在想要只针对v=3 的情况做一些处理
-        Some(3) => println!("three"),
-        _ => println!("others"),
-    };
-    // 我们就可以使用 if let 语法糖
-    if let Some(3) = v {
-        println!("three");
-    } else {
-        println!("others");
-    }
+    println!(" hello world");
 }
