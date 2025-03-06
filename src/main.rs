@@ -1,115 +1,151 @@
-use std::{
-    fs::{self, File},
-    io::{Error, ErrorKind, Read},
-};
+use std::fmt::{Debug, Display};
 
-/*
-复习一下我们之前所提到的Result 枚举,
-```rust
-enum Result<T,E> {
-OK(T),
-Err(E),
-}
-在程序发生错误的时候 一般有一些是可以恢复的错误，比如我们打开文件失败了，我们可以先创建该文件，但是如果数组越界了这种错误就是不可以恢复的，就要立即报错了，
-这一小节我们就会去详细的探讨一下 如何处理，可以恢复的错误以及不可以恢复的错误
+//使用trait 定义共享的行为
+fn main() {
+    println!("hello world!");
 
-
-```
-*/
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("hello world");
-    // 如果我们指定了一个f:u32 那么如果文件打开的时候的类型不匹配就会在控制台打印为什么这个赋值是错误的，并且会输出File::open 这个函数调用之后的返回值的具体类型
-    // let f: u32 = File::open("hello.txt");
-
-    let f = File::open("hello.txt");
-    // 如果成功就会返回一个可以操作的文件句柄，如果是被的话那么就返回的是一个std::io::Error 的错误实例
-    //我们现在就要使用我们的match 表达式去处理返回的枚举类型里面的错误
-    // let f = match f {
-    //     Ok(file) => file,
-    //     Err(error) => {
-    //         //这里就会打印error ，会返回系统找不到指定的文件的error 实例，
-    //         panic!("Problem opening the file {:?}", error);
-    //     }
+    // let article = NewArticle {
+    //     headline: String::from("Penguins win the Stanley Cup Championship!"),
+    //     location: String::from("Pittsburgh, PA, USA"),
+    //     author: String::from("Iceburgh"),
+    //     content: String::from(
+    //         "The Pittsburgh Penguins once again are the best
+    // hockey team in the NHL.",
+    //     ),
     // };
-
-    // 同样的我们在Err 中可能会存在很多类型的错误，让我们显示的去处理她
-    // 如果当前的文件没有找到，我们可以通过手动的创建同目录的文件来避免我们的错误，这样
-    // let f = match f {
-    //     Ok(res) => res,
-    //     Err(err) => match err.kind() {
-    //         ErrorKind::NotFound => match File::create("hello.txt") {
-    //             Ok(fc) => fc,
-    //             Err(e) => panic!("Problem creating the file {:?}", e),
-    //         },
-    //         other_error => panic!("Problem opening the file {:?}", other_error),
-    //     },
-    // };
-    // 让我们来改进一下 上面的代码
-    // 让我们使用unwrap_or_else 来改进match 表达式
-    /*
-
-    ``` rust
-    let r = File::open("hello.txt").unwrap_or_else(|error| {
-        if error.kind() == ErrorKind::NotFound {
-            File::create("hello.txt").unwrap_or_else(|error| {
-                panic!("Problem creating the file {:?}", error);
-            })
-        } else {
-            panic!("Problem opening the file {:?}", error);
-        }
-    });
-    ```
-    */
-    // 我们在panic! 的简写unwrap 以及expect
-    // 调用unwrap 之后会发生的事情
-    // 比如 类似于match 如果是成功的状态,那么就返回Ok中的值，如果失败，那么就自动的调用panic!  但是这个方法 不能自定义panic! 输出的值，如果想要控制panic！之后输出到控制台的提示信息的话，就使用expect
-    /*
-    ```rust
-    let x = File::open("hello.txt").unwrap();
-    let x = File::open("hello.txt").expect("打开文件失败1111");
-    ```
-    */
-    // 如果在main 函数中使用？
-    let f = File::open("hello.txt")?;
-
-    //编译器会报错，因为main 函数很特殊，其值返回为一个(); 但是? 这个操作可能会返回一个Error 类型，
-    // 1. 通过将返回值修改为Result<T,E>
-    // 2.通过合适的方法来处理 Result<T,E>
-    Ok(())
+    // println!("article {}", article.summarize())
+    println!("{:?}", largest(&vec![2, 3, 4]))
 }
 
-// 但是很多时候，我们不需要在我们代码内部去处理我们的错误，我们需要把我们代码里面的错误告知我们的函数的调用者，让调用者决定到底该如何处理这个错误，就例如我们File::open 方法打开文件的时候我们会接收到文件的打开失败的具体的Err,
-// 我们可以自己处理我们的代码逻辑并且也组织好我们的错误，传递给调用者
-fn read_username_from_file() -> Result<String, Error> {
-    let file = File::open("hello.txt");
-    let mut f = match file {
-        Ok(file) => file,
-        Err(e) => return Err(e),
-    };
-    let mut s = String::new();
-    match f.read_to_string(&mut s) {
-        Ok(_) => Ok(s),
-        Err(e) => Err(e),
+pub struct NewArticle {
+    pub headline: String,
+    pub location: String,
+    pub author: String,
+    pub content: String,
+}
+//定义trait
+pub trait Summary {
+    fn summarize(&self) -> String;
+}
+
+// impl Summary for NewArticle {
+//     fn summarize(&self) -> String {
+//         format!("{},by {} ({})", self.headline, self.author, self.location)
+//     }
+// }
+
+pub struct Tweet {
+    pub username: String,
+    pub content: String,
+    pub reply: bool,
+    pub retweet: bool,
+}
+
+impl Summary for Tweet {
+    fn summarize(&self) -> String {
+        format!("{} : {}", self.username, self.content)
+    }
+}
+// 注意: 只有当trait 或者要实现的trait 位于crate 的本地作用域的时候才能为该类型实现trait 可以为自定义的struct Tweet 实现标准库中的Display trait ,或者为标准库中的 struct 实现自定义的trait
+// 但是不能为外部 struct(结构体) 实现外部的 trait(正面)
+
+//trait 的默认实现, 如果有默认实现以及有具体的实现,rust 编译器会报出错误;
+
+// pub trait SummaryDefault {
+//     fn summarize(&self) -> String {
+//         String::from("(Read more ...)")
+//     }
+// }
+// impl SummaryDefault for NewArticle {}
+
+//可以在定义trait 的时候调用已经定义好的方法 作为默认实现,
+// pub trait Summary {
+//     fn summarize_author(&self) -> String;
+
+//     fn summarize(&self) -> String {
+//         format!("(Read more from {}...)", self.summarize_author())
+//     }
+// }
+
+// 使用trait 作为参数,就是传递的值必须要满足指定的trait 才能完成调用
+
+// pub fn notify(item: impl Summary) {
+//     println!("Breaking news {}", item.summarize());
+// }
+
+//trait bound 语法
+// pub fn notify<T: Summary>(item: T) {
+//     println!("Breaking news {}", item.summarize());
+// }
+
+//如果有两个需要实现的trait bound 那么就有下面的代码
+// pub fn notify(item: impl Summary + Display) {}
+pub fn notify<T: Summary + Display>(item: T) {}
+
+//通过where 关键字简化trait bound
+// fn some_function<T: Display + Clone, U: Clone + Debug>(t: T, u: U) -> i32 {}
+fn some_function<T, U>(t: T, u: U)
+where
+    T: Display + Clone,
+    U: Clone + Debug,
+{
+}
+
+//返回实现了trait 的类型
+fn return_summarizable() -> impl Summary {
+    Tweet {
+        username: String::from("horse_ebooks"),
+        content: String::from("of course ,as you probably already know, people"),
+        reply: false,
+        retweet: false,
     }
 }
 
-// 传播错误的简写?
-// Result 值之后的? 的作用 如果Result  的值是Ok 那么 程序将继续执行，如果Result 的值是Error 那么程序就将该Error 作为整个函数的返回值返回，就好像使用了return 关键字一样
-// 内部的实现是? 会把错误的值传递给form函数，收到错误之后,form 函数会把收到的错误类型转换成当前函数返回类型所指定的错误类型
-fn read_username_from_file2() -> Result<String, Error> {
-    let mut f = File::open("hello.txt")?;
-    let mut s = String::new();
-    f.read_to_string(&mut s)?;
-    Ok(s)
+//但是下面这个函数就不能正常编译,这等到后面说
+// fn returns_summarizable(switch: bool) -> impl Summary {
+//     if switch {
+//         NewsArticle {
+//             headline: String::from("Penguins win the Stanley Cup Championship!"),
+//             location: String::from("Pittsburgh, PA, USA"),
+//             author: String::from("Iceburgh"),
+//             content: String::from(
+//                 "The Pittsburgh Penguins once again are the best
+//             hockey team in the NHL.",
+//             ),
+//         }
+//     } else {
+//         Tweet {
+//             username: String::from("horse_ebooks"),
+//             content: String::from("of course, as you probably already know, people"),
+//             reply: false,
+//             retweet: false,
+//         }
+//     }
+// }
+fn largest<'a, T: PartialOrd>(list: &'a [T]) -> &'a T {
+    //使用生命周期标定 largest 的生命周期
+    let mut largest = &list[0];
+    for item in list.iter() {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
 }
 
-//通过链式调用进一步精简代码
-fn read_username_from_file3() -> Result<String, Error> {
-    let mut s = String::new();
-    File::open("hello.txt")?.read_to_string(&mut s)?;
-    Ok(s)
-}
+// fn largest<T: PartialOrd + Clone>(list: &[T]) -> &T {
+//     let mut largest = &list[0];
+//     for item in list.iter() {
+//         if item > largest {
+//             largest = &item;
+//         }
+//     }
+//     largest
+// }
 
-fn read_username_from_file4() -> Result<String, Error> {
-    fs::read_to_string("hello.txt")
-}
+// //改造largest 方法
+// fn largest<T: PartialOrd + Clone>(list: &[T]) -> &T {
+//     list.iter()
+//         .max_by(|a, b| a.partial_cmp(b).unwrap())
+//         .unwrap()
+// }
