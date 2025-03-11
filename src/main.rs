@@ -1,175 +1,70 @@
-use std::{thread, time::Duration};
-//# 闭包: 可以捕获环境的匿名函数;
-// rust 中的闭包可以保存进变量,可以作为参数传递给其他函数的匿名函数, 我们可以在一个地方创建闭包,在不同的上下文执行闭包运算.
-// 不同于函数,闭包可以捕获调用者作用域中的值
-// 可以更好的组织代码和自定义行为
-// 昂贵的计算 rust 后端代码 生成健身计划
+//# 使用迭代器和for 循环执行一些代码
+// rust 的迭代器是惰性的,知道迭代器被使用的时候才能产生效果.
+// 迭代器会被代码消费,next 每调用一次都会消费迭代器中的一个项,使用for 循环时无需使v1_iter 可变是因为for 循环会获取v1_iter 的所有权,并在后台使v1_iter 可变;
+// 使用iter() 生成不可变引用的迭代器 &T;
+// 使用 into_iter() 生成一个具有所有权的迭代器 T;
+// 使用iter_mut() 生成一个可变引用的迭代器 &mut T (这个需要原始数据是 mut 的);
 fn main() {
-    // 需要两个变量
-    //1. 来自用户的intensity 数字,代表用户喜欢的计划的强度等级
-    //2. 一个随机数,在健身计划中生成变化.
-    let simulated_user_specified_value = 10;
-    let simulated_random_number = 7;
-    generate_workout(simulated_user_specified_value, simulated_random_number)
-}
-// fn generate_workout(intensity: u32, random_number: u32) {
-//     if intensity < 25 {
-//         //如果强度小于25
-//         //俯卧撑
-//         println!(
-//             "Today, do {} pushups",
-//             simulated_expensive_calculation(intensity)
-//         );
-//         //仰卧起坐
-//         println!(
-//             "Next, do {} situps",
-//             simulated_expensive_calculation(intensity)
-//         );
-//     } else {
-//         //如果强度大于25
-//         if random_number == 3 {
-//             // 如果随机数等于3 那么
-//             println!("Take a break tody! Remember to stay hydrated!");
-//         } else {
-//             //随机数不等于3
-//             //跑步多少分钟
-//             println!(
-//                 "Today, run for {} minutes!",
-//                 simulated_expensive_calculation(intensity)
-//             )
-//         }
-//     }
-// }
-
-//使用一个值来保存我们昂贵计算所计算出来的结果;(但是这样会存在一种情况就是不需要这个昂贵计算的时候也会去计算其值)
-// fn generate_workout(intensity: u32, random_number: u32) {
-//     let expensive_result = simulated_expensive_calculation(intensity);
-//     if intensity < 25 {
-//         //如果强度小于25
-//         //俯卧撑
-//         println!("Today, do {} pushups", expensive_result);
-//         //仰卧起坐
-//         println!("Next, do {} situps", expensive_result);
-//     } else {
-//         //如果强度大于25
-//         if random_number == 3 {
-//             // 如果随机数等于3 那么
-//             println!("Take a break tody! Remember to stay hydrated!");
-//         } else {
-//             //随机数不等于3
-//             //跑步多少分钟
-//             println!("Today, run for {} minutes!", expensive_result)
-//         }
-//     }
-// }
-
-// fn generate_workout(intensity: u32, random_number: u32) {
-//     //闭包的定义 出现在闭包的变量名后的=后面就是闭包的定义 闭包用|开始,然后里面是闭包的参数,如果有多个参数以 , 分割 |a,b|{} 大括号里面就是闭包里面需要执行的逻辑,成为闭包体,如果闭包体里面只有一行代码的话,那么闭包体的括号是可以省略的,
-//     // 在闭包的末尾 使用分号 让let 语句完整,
-//     //使用闭包替换
-//     let expensive_closure = |num| {
-//         println!("calculating slowly ...");
-//         thread::sleep(Duration::from_secs(2));
-//         num
-//     };
-//     if intensity < 25 {
-//         //如果强度小于25
-//         //俯卧撑
-//         println!("Today, do {} pushups", expensive_closure(intensity));
-//         //仰卧起坐
-//         println!("Next, do {} situps", expensive_closure(intensity));
-//     } else {
-//         //如果强度大于25
-//         if random_number == 3 {
-//             // 如果随机数等于3 那么
-//             println!("Take a break tody! Remember to stay hydrated!");
-//         } else {
-//             //随机数不等于3
-//             //跑步多少分钟
-//             println!("Today, run for {} minutes!", expensive_closure(intensity))
-//         }
-//     }
-// }
-// 关于闭包的类型推断和标注,闭包不需要像fn 函数那样进行函数参数和返回值的注明类型,(因为闭包通常很短小且类型都可以能靠编译器推断出来)
-// 如果对一个闭包传入两个不同类型的值,那么编译器会得到一个类型错误,因为当第一次调用闭包的时候,传入的值的类型就被锁定到了闭包内部,不允许更改了;
-
-// fn  add_one_v1   (x: u32) -> u32 { x + 1 }
-// let add_one_v2 = |x: u32| -> u32 { x + 1 };
-// let add_one_v3 = |x|             { x + 1 };
-// let add_one_v4 = |x|               x + 1  ;
-//回到我们的generate_workout 函数,虽然说使用了闭包但是这个闭包的函数还是在很多地方重复的调用了,有两种思路,在全局的generate_workout 内部定义一个值用来接受我们昂贵计算的函数的返回值,如果有那么就不再调用昂贵花费的函数了,但是这种方法很重复,也不好维护
-// 我们可以定义一个 存放闭包和调用闭包的结构体,该结构体只会在需要结果的时候执行闭包,然后返回闭包执行的值,并且会缓存其值.
-// 为了让结构体能够储存闭包,所以我们需要指定闭包的类型,因为结构体定义知道每一个字段的类型,每一个闭包实例都有自己独有的匿名类型, 即便两个闭包有着相同的签名,但是他们的类型仍然可以被认为是不同的.
-struct Cacher<T>
-where
-    T: Fn(u32) -> u32,
-{
-    calculation: T,
-    value: Option<u32>,
-}
-
-//现在cacher 实现的限制,如果有值的话,就不执行具体的代码了,并且一旦有值,无论参数怎么变化,都只会返回之前已经缓存了的值
-impl<T> Cacher<T>
-where
-    T: Fn(u32) -> u32,
-{
-    fn new(calculation: T) -> Cacher<T> {
-        Cacher {
-            calculation,
-            value: None,
-        }
+    let v1 = vec![1, 2, 3];
+    let v1_iter = v1.iter();
+    //这里如果对于v1 进行下面的操作也是可以成功的,唯一的区别就是所有权,for in v1 val是持有所有权的i32 类型,而for in v1_iter 则是&i32 类型的引用类型不持有所有权;
+    let s: i32 = v1_iter.sum();
+    println!("s:{}", s);
+    //如果一个迭代器被消费了,那么后续就不能使用了
+    // for val in v1_iter {
+    //     println!("Got : {}", val)
+    // }
+    // 产生新的迭代器
+    let v2_iter = v1.iter().map(|x| x + 1);
+    for val in v2_iter {
+        println!("this is v2 value{}", val)
     }
-    fn value(&mut self, arg: u32) -> u32 {
-        match self.value {
-            Some(v) => v,
-            None => {
-                let v = (self.calculation)(arg);
-                self.value = Some(v);
-                v
-            }
-        }
+    //使用迭代器产生新的vec
+    let v3: Vec<_> = v1.iter().map(|x| x + 2).collect();
+    println!("v3 is {:?}", v3);
+    let v4 = Counter::new();
+    let v4_sum: u32 = v4.sum();
+    println!("v4_sum is {}", v4_sum);
+}
+
+//Iterator trait 和next 方法
+// pub trait Iterator {
+//     type Item; //(实现这个trait 的时候还需要同时定义一个Item 类型 关联类型);
+//     fn next(&mut self) -> Option<Self::Item>;
+// }
+
+// 消费迭代器的方法, 消费迭代器的方法Iterator trait 有一系列由标准库提供的默认实现方法,这些调用了 next 的方法称之为 消费适配器,例如
+
+// #[test]
+// fn iterator_sum() {
+//     let v1 = vec![1, 2, 3];
+
+//     let v1_iter = v1.iter();
+
+//     let total: i32 = v1_iter.sum();
+
+//     assert_eq!(total, 6);
+// 在调用完成迭代器之后就不允许使用迭代器了,因为调用sum 会获取迭代器的所有权
+// }
+
+//为自定义的struct 实现 Iterator
+struct Counter {
+    count: u32,
+}
+
+impl Counter {
+    fn new() -> Counter {
+        Counter { count: 0 }
     }
 }
-
-fn generate_workout(intensity: u32, random_number: u32) {
-    let mut expensive_result = Cacher::new(|num| {
-        println!("calculating slowly ...");
-        thread::sleep(Duration::from_secs(2));
-        num
-    });
-    if intensity < 25 {
-        //如果强度小于25
-        //俯卧撑
-        println!("Today, do {} pushups", expensive_result.value(intensity));
-        //仰卧起坐
-        println!("Next, do {} situps", expensive_result.value(intensity));
-    } else {
-        //如果强度大于25
-        if random_number == 3 {
-            // 如果随机数等于3 那么
-            println!("Take a break tody! Remember to stay hydrated!");
+impl Iterator for Counter {
+    type Item = u32;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.count += 1;
+        if self.count < 6 {
+            Some(self.count)
         } else {
-            //随机数不等于3
-            //跑步多少分钟
-            println!(
-                "Today, run for {} minutes!",
-                expensive_result.value(intensity)
-            )
+            None
         }
     }
 }
-
-fn simulated_expensive_calculation(intensity: u32) -> u32 {
-    println!("calculating slowly ...");
-    thread::sleep(Duration::from_secs(2));
-    intensity
-}
-//使用闭包重构复杂计算逻辑
-
-// //闭包使用三种方式来捕获环境中的变量,分别是
-// - FnOnce 消费从周围作用域捕获的变量，闭包周围的作用域被称为其 环境，environment。为了消费捕获到的变量，闭包必须获取其所有权并在定义闭包时将其移动进闭包。其名称的 Once 部分代表了闭包不能多次获取相同变量的所有权的事实，所以它只能被调用一次。
-// - FnMut 获取可变的借用值所以可以改变其环境
-// - Fn 从其环境获取不可变的借用值
-
-//关系是,所有的闭包都实现了FnOnce,没有移动变量所有权的闭包实现了FnMut,不需要对变量进行可变访问的闭包实现了Fn,所以 FnMut>Fn>FnOnce;
-// 使用move 移动变量所有权到闭包内部, 当变量被移动到闭包内部的时候,闭包获取了变量的所有权,那么在闭包的上层就不能访问 该移动了的变量了; 技巧: 在使用的时候使用Fn 的trait bound 然后编译器会告诉你是否需要FnMut 或者是FnOnce;
