@@ -1,165 +1,175 @@
-// 生命周期以及其有效性
-//## 生命周期避免了悬垂引用
-// 如果声明了一个变量但是没有给他赋值,如果在给他赋值前去进行访问,那么会出现一个编译时错误
-
+use std::{thread, time::Duration};
+//# 闭包: 可以捕获环境的匿名函数;
+// rust 中的闭包可以保存进变量,可以作为参数传递给其他函数的匿名函数, 我们可以在一个地方创建闭包,在不同的上下文执行闭包运算.
+// 不同于函数,闭包可以捕获调用者作用域中的值
+// 可以更好的组织代码和自定义行为
+// 昂贵的计算 rust 后端代码 生成健身计划
 fn main() {
-    println!("hello world!");
-
-    // let r;
-    // {
-    //     let x = 5;
-    //     r = &x;
-    // 	// x 在退出作用域的时候会被清理掉,所以r 如果赋值允许的情况下,就指向了一个错误的地址,或者是一个空的地址,造成了悬垂引用;
-    // }
-    // println!("r:{}", r)
-    //尝试编写一个判断字符串长短的函数,返回字符串长度较长者
-    let string1 = String::from("abcd");
-    let string2 = "xyz";
-
-    let result = longest(string1.as_str(), string2);
-    println!("The longest string is {}", result);
+    // 需要两个变量
+    //1. 来自用户的intensity 数字,代表用户喜欢的计划的强度等级
+    //2. 一个随机数,在健身计划中生成变化.
+    let simulated_user_specified_value = 10;
+    let simulated_random_number = 7;
+    generate_workout(simulated_user_specified_value, simulated_random_number)
 }
-
-// rust 中的借用检查器,以及生命周期标识
-// {
-//     let r;                // ---------+-- 'a (r 变量生命周期范围)
-//                           //          |
-//     {                     //          |
-//         let x = 5;        // -+-- 'b  |  (x 变量的生命周期范围)
-//         r = &x;           //  |       |
-//     }                     // -+       |
-//                           //          |
-//     println!("r: {}", r); //          |
-// }                         // ---------+
-// r 的生命周期比x 大 , 而r 却引用了 一个比他生命周期小的x 变量,所以编译器 拒绝编译程序. (如果生命周期小,就不能保证在自己生命周期内,引用的生命周期一直有效)
-
-// 函数中的泛型生命周期
-
-//下面这段代码是有问题的,因为编译器 不知道要返回的引用指向的是x或者y,事实上我们也不知道.因为函数体里面一种可能是返回x 的引用,而另一种可能是返回y 的引用
-// 我们也没办法观察作用域来确定他们的引用是否总是有效.使用借用检查器也没办法知道,因为他不知道x和y的生命周期如何与返回值的生命周期相关联的
-// fn longest(x: &str, y: &str) -> &str {
-//     if x.len() > y.len() {
-//         return x;
-//     }
-//     y
-// }
-// 我们增加 生命周期标注 来帮助rust 编译器了解我们的代码之间 多个引用生命周期的相互影响关系.
-// 生命周期的标注不改变任何引用的生命周期的长短. 生命周期的语法是以 ' 开头
-
-// &i32        // 引用
-// &'a i32     // 带有显式生命周期的引用
-// &'a mut i32 // 带有显式生命周期的可变引用
-
-fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
-    if x.len() > y.len() {
-        return x;
-    }
-    y
-}
-// 下面一段话解释了 单个生命周期标注为什么没有意义
-// 因为生命周期标注告诉rust 多个泛型生命周期如何相互联系的,如果一个函数的两个参数的生命周期都被标注成了'a, 那么这个标注的含义就是这两个参数的生命周期 应该和这个泛型的生命周期一样长
-// 为了强化这个记忆, 一个传入了 两个参数的函数 其两个参数的生命周期被显示的标注了,那么现在函数签名表明对于某些生命周期'a ,函数获取了两个参数,他们都是与生命周期'a 存在的一样长的字符串slice. 函数也会返回统一也与生命周期 'a 存在的一样长的字符出slice
-// 实际含义是 longest 函数返回的引用的生命周期与传入该函数的引用的生命周期的较小者一致
-// 我们用相同的生命周期'a 标注 x,y ,但是却返回了x,y 生命周期的较小者, 但是小的生命周期中 更大的生命周期 总是有效的 (而我们返回的就是较大的那个生命周期,所以返回的引用值 在实际的返回的 生命周期中总是有效的)
-
-// 直观的例子 (因为生命周期 返回的是 较小的生命周期,那么 小的生命周期总能保证 该生命周期中的 引用都是有效的, ) string1 是全局有效的,而string2 则是在局部有效的,而result 则引用了在局部内部作用域都是有效的值, 这个代码就是有效的
-// {
-//     let string1 = String::from("long string is long");
-
-//     {
-//         let string2 = String::from("xyz");
-//         let result = longest(string1.as_str(), string2.as_str());
-//         println!("The longest string is {}", result);
-//     }
-// }
-
-//但是下面这个 虽然直觉上是会返回string1 而string1 拥有全局的作用域,这个例子是正确的(但是 代入我们的生命周期规则,这个longest 返回的 两个参数中较短的那个) (另一种解释方法是: 为了保证 result 的有效性,那么就必须保证string1,string2 都必须直到外部作用域结束之前都是有效的,而显然string2 不满足,所以报错)
-
-// {
-//     let string1 = String::from("long string is long");
-
-//     {
-//         let string2 = String::from("xyz");
-//         let result = longest(string1.as_str(), string2.as_str());
-//     }
-//      println!("The longest string is {}", result);
-// }
-
-// 尝试 指定生命周期,然后返回一个悬垂引用 (因为返回的生命周期与参数完全没有关系,返回了一个悬垂引用,这个时候考虑返回一个具有所有权的值 而不是 一个值的引用)
-// fn longest<'a>(x: &str, y: &str) -> &'a str {
-//     let result = String::from("really long string");
-//     result.as_str()
-// }
-
-//结构体中定义生命周期
-// struct ImportantExcerpt<'a> {
-//     part: &'a str,
-// }
-//生命周期省略规则
-//函数或者方法的参数的生命周期被成为输入生命周期,而返回值的生命周期被称为输出生命周期
-//三个规则 前两个补全输入生命周期,后一个补全输出生命周期
-// 1. 每一个引用的参数都有它自己的生命周期
-// fn foo<'a>(x: &'a i32) {}
-// fn foo<'a,'b>(x:&'a i32,y:&'a i32){}
-//fn foo<'a, 'b>(x: &'a i32, y: &'b i32){}
-
-// 2. 如果只有一个输入生命周期,那么它被赋予所有输出生命周期
-// fn foo<'a>(x: &'a i32)->&'a i32 {}
-
-//3. 如果方法有多个输入生命周期并且其中一个是&self 或者&mut self,那么所有输出生命周期被赋予self 的生命周期.
-
-// 针对于下面这个函数
-// fn first_world(s: &str) -> &str {}
-// ----- 应用第一条规则---- (每个引用参数都有一个他自己的生命周期)
-// fn first_world(s: &'a str) -> &str {}
-
-// -- 应用第二条规则 --- (如果只有一个输入生命周期那么它被赋予所有输出生命周期)
-
-// fn first_world(s: &'a str) -> &'a str {}
-
-// --- 已经补全了生命周期了,而且第三条规则应用不上
-
-// 然后再看我们之前的longest 函数的代码
-// fn longest(x: &str, y: &str) -> &str {
-// ---- 应用第一条生命周期补全规则
-// fn longest(x: &'a str, y: &'b str) -> &str {
-
-//第二条第三条规则应用不上,所以不行
-
-// 对于带有生命周期结构体 为其实现方法时
-// impl<'a> ImportantExcerpt<'a> {
-//     fn level(&self) -> i32 {
-//         3
-//     }
-// }
-
-//使用于第三条补全规则的 例子
-// impl<'a> ImportantExcerpt<'a> {
-//     fn announce_and_return_part(&self, announcement: &str) -> &str {
-//         println!("Attention please: {}", announcement);
-//         self.part
-//     }
-// }
-
-impl<'a> ImportantExcerpt<'a> {
-    fn announce_and_return_part(&'a self, announcement: &str) -> &'a str {
-        println!("Attention please: {}", announcement);
-        self.part
-    }
-}
-// 静态生命周期 'static 在整个程序的生命周期里面都有效的,但是 谨慎使用
-
-// 结合泛型类型参数 trait bound 和生命周期的一个函数的例子
-
-// use std::fmt::Display;
-
-// fn longest_with_an_announcement<'a, T>(x: &'a str, y: &'a str, ann: T) -> &'a str
-//     where T: Display
-// {
-//     println!("Announcement! {}", ann);
-//     if x.len() > y.len() {
-//         x
+// fn generate_workout(intensity: u32, random_number: u32) {
+//     if intensity < 25 {
+//         //如果强度小于25
+//         //俯卧撑
+//         println!(
+//             "Today, do {} pushups",
+//             simulated_expensive_calculation(intensity)
+//         );
+//         //仰卧起坐
+//         println!(
+//             "Next, do {} situps",
+//             simulated_expensive_calculation(intensity)
+//         );
 //     } else {
-//         y
+//         //如果强度大于25
+//         if random_number == 3 {
+//             // 如果随机数等于3 那么
+//             println!("Take a break tody! Remember to stay hydrated!");
+//         } else {
+//             //随机数不等于3
+//             //跑步多少分钟
+//             println!(
+//                 "Today, run for {} minutes!",
+//                 simulated_expensive_calculation(intensity)
+//             )
+//         }
 //     }
 // }
+
+//使用一个值来保存我们昂贵计算所计算出来的结果;(但是这样会存在一种情况就是不需要这个昂贵计算的时候也会去计算其值)
+// fn generate_workout(intensity: u32, random_number: u32) {
+//     let expensive_result = simulated_expensive_calculation(intensity);
+//     if intensity < 25 {
+//         //如果强度小于25
+//         //俯卧撑
+//         println!("Today, do {} pushups", expensive_result);
+//         //仰卧起坐
+//         println!("Next, do {} situps", expensive_result);
+//     } else {
+//         //如果强度大于25
+//         if random_number == 3 {
+//             // 如果随机数等于3 那么
+//             println!("Take a break tody! Remember to stay hydrated!");
+//         } else {
+//             //随机数不等于3
+//             //跑步多少分钟
+//             println!("Today, run for {} minutes!", expensive_result)
+//         }
+//     }
+// }
+
+// fn generate_workout(intensity: u32, random_number: u32) {
+//     //闭包的定义 出现在闭包的变量名后的=后面就是闭包的定义 闭包用|开始,然后里面是闭包的参数,如果有多个参数以 , 分割 |a,b|{} 大括号里面就是闭包里面需要执行的逻辑,成为闭包体,如果闭包体里面只有一行代码的话,那么闭包体的括号是可以省略的,
+//     // 在闭包的末尾 使用分号 让let 语句完整,
+//     //使用闭包替换
+//     let expensive_closure = |num| {
+//         println!("calculating slowly ...");
+//         thread::sleep(Duration::from_secs(2));
+//         num
+//     };
+//     if intensity < 25 {
+//         //如果强度小于25
+//         //俯卧撑
+//         println!("Today, do {} pushups", expensive_closure(intensity));
+//         //仰卧起坐
+//         println!("Next, do {} situps", expensive_closure(intensity));
+//     } else {
+//         //如果强度大于25
+//         if random_number == 3 {
+//             // 如果随机数等于3 那么
+//             println!("Take a break tody! Remember to stay hydrated!");
+//         } else {
+//             //随机数不等于3
+//             //跑步多少分钟
+//             println!("Today, run for {} minutes!", expensive_closure(intensity))
+//         }
+//     }
+// }
+// 关于闭包的类型推断和标注,闭包不需要像fn 函数那样进行函数参数和返回值的注明类型,(因为闭包通常很短小且类型都可以能靠编译器推断出来)
+// 如果对一个闭包传入两个不同类型的值,那么编译器会得到一个类型错误,因为当第一次调用闭包的时候,传入的值的类型就被锁定到了闭包内部,不允许更改了;
+
+// fn  add_one_v1   (x: u32) -> u32 { x + 1 }
+// let add_one_v2 = |x: u32| -> u32 { x + 1 };
+// let add_one_v3 = |x|             { x + 1 };
+// let add_one_v4 = |x|               x + 1  ;
+//回到我们的generate_workout 函数,虽然说使用了闭包但是这个闭包的函数还是在很多地方重复的调用了,有两种思路,在全局的generate_workout 内部定义一个值用来接受我们昂贵计算的函数的返回值,如果有那么就不再调用昂贵花费的函数了,但是这种方法很重复,也不好维护
+// 我们可以定义一个 存放闭包和调用闭包的结构体,该结构体只会在需要结果的时候执行闭包,然后返回闭包执行的值,并且会缓存其值.
+// 为了让结构体能够储存闭包,所以我们需要指定闭包的类型,因为结构体定义知道每一个字段的类型,每一个闭包实例都有自己独有的匿名类型, 即便两个闭包有着相同的签名,但是他们的类型仍然可以被认为是不同的.
+struct Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    calculation: T,
+    value: Option<u32>,
+}
+
+//现在cacher 实现的限制,如果有值的话,就不执行具体的代码了,并且一旦有值,无论参数怎么变化,都只会返回之前已经缓存了的值
+impl<T> Cacher<T>
+where
+    T: Fn(u32) -> u32,
+{
+    fn new(calculation: T) -> Cacher<T> {
+        Cacher {
+            calculation,
+            value: None,
+        }
+    }
+    fn value(&mut self, arg: u32) -> u32 {
+        match self.value {
+            Some(v) => v,
+            None => {
+                let v = (self.calculation)(arg);
+                self.value = Some(v);
+                v
+            }
+        }
+    }
+}
+
+fn generate_workout(intensity: u32, random_number: u32) {
+    let mut expensive_result = Cacher::new(|num| {
+        println!("calculating slowly ...");
+        thread::sleep(Duration::from_secs(2));
+        num
+    });
+    if intensity < 25 {
+        //如果强度小于25
+        //俯卧撑
+        println!("Today, do {} pushups", expensive_result.value(intensity));
+        //仰卧起坐
+        println!("Next, do {} situps", expensive_result.value(intensity));
+    } else {
+        //如果强度大于25
+        if random_number == 3 {
+            // 如果随机数等于3 那么
+            println!("Take a break tody! Remember to stay hydrated!");
+        } else {
+            //随机数不等于3
+            //跑步多少分钟
+            println!(
+                "Today, run for {} minutes!",
+                expensive_result.value(intensity)
+            )
+        }
+    }
+}
+
+fn simulated_expensive_calculation(intensity: u32) -> u32 {
+    println!("calculating slowly ...");
+    thread::sleep(Duration::from_secs(2));
+    intensity
+}
+//使用闭包重构复杂计算逻辑
+
+// //闭包使用三种方式来捕获环境中的变量,分别是
+// - FnOnce 消费从周围作用域捕获的变量，闭包周围的作用域被称为其 环境，environment。为了消费捕获到的变量，闭包必须获取其所有权并在定义闭包时将其移动进闭包。其名称的 Once 部分代表了闭包不能多次获取相同变量的所有权的事实，所以它只能被调用一次。
+// - FnMut 获取可变的借用值所以可以改变其环境
+// - Fn 从其环境获取不可变的借用值
+
+//关系是,所有的闭包都实现了FnOnce,没有移动变量所有权的闭包实现了FnMut,不需要对变量进行可变访问的闭包实现了Fn,所以 FnMut>Fn>FnOnce;
+// 使用move 移动变量所有权到闭包内部, 当变量被移动到闭包内部的时候,闭包获取了变量的所有权,那么在闭包的上层就不能访问 该移动了的变量了; 技巧: 在使用的时候使用Fn 的trait bound 然后编译器会告诉你是否需要FnMut 或者是FnOnce;
