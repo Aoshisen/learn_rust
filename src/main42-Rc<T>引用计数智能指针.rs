@@ -1,5 +1,6 @@
 // 使用Rc<T>引用记数智能指针;
-// 有一个List 然后两个新的List 会拥有之前的这个List
+//想象一下 有三个list  一个基础的list ,而其他两个派生的list 会拥有这个基础的list,这个时候该如何办, 使用基础的Box<T>将不能满足需要了
+// 有一个List 然后两个新的List 会拥有之前的这个List 使用Rc::clone() 来增加计数 
 //Rc<T> 只能用于单线程
 enum List {
     Cons(i32, Rc<List>),
