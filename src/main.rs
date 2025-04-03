@@ -1,53 +1,13 @@
-//使用发消息的机制 来在不同的线程之间通信,类似于iframe 通信只能通过发消息 rust 受到golang 语言启发,不要通过共享内存来通讯,而是通过通讯来共享内存;
-// 信道通过两部分组成,发送者(transmitter),接受者(receiver),当发送者或接受者任意一方被丢弃时,就可以认为信道被关闭了;
-//mpsc 是多个生产者,单个消费者的意思(multiple producer ,single consumer)
-use std::sync::mpsc;
-use std::thread;
-use std::time::Duration;
+//使用sync 和send 的可扩展并发
+//内嵌于语言当中的并发概念 std::marker 中的Sync 和Send trait.
+
+// 通过Send trait 表明所有权可以在线程间传递,几乎所有的Rust 类型都是Send 的,但是Rc<T> 不是,因为克隆了Rc<T>的值并尝试将克隆的所有权转移到另一个线程,这两个线程都可能同事更新引用计数.
+//sync 允许多线程访问
+// Sync 表明一个实现了Sync 的类型可以安全的在多个线程中拥有其值的引用,对于任意类型 T,如果 &T 是Send 的,那么T 就是Sync 的,这意味着其引用就可以安全的发送到另一个线程.
+// 智能指针Rc<T> 也不是Sync 的,出于其不是Send 的相同原因.
+
+//手动实现Sync 和Send Trait 是不安全的,他们只是标记trait,甚至不需要实现任何方法,只是用来加强并发相关的不可变性
+
 fn main() {
     println!("hello world!");
-    let (tx, rx) = mpsc::channel();
-    //使用clone 来创建多个发送者
-    let tx1 = tx.clone();
-
-    thread::spawn(move || {
-        // let val = String::from("hi");
-        // tx.send(val).unwrap();
-        //在send 完成之后使用该值是不允许的
-        // println!("val is {val}")
-        let v = vec![
-            String::from("hi"),
-            String::from("from"),
-            String::from("the"),
-            String::from("thread"),
-        ];
-
-        for val in v {
-            tx.send(val).unwrap();
-            thread::sleep(Duration::from_secs(1));
-        }
-    });
-
-    thread::spawn(move || {
-        let vals = vec![
-            String::from("more"),
-            String::from("messages"),
-            String::from("for"),
-            String::from("you"),
-        ];
-
-        for val in vals {
-            tx1.send(val).unwrap();
-            thread::sleep(Duration::from_secs(1));
-        }
-    });
-
-    // let received = rx.recv().unwrap();
-    // //接受者有两个方法recv()[会阻塞主线程执行,直到有值的时候,会在一个Result<T,E> 中返回他,但是 如果信道关闭,recv 会返回一个错误来表明不再有新的值进来了]
-    // //try_recv() 不会阻塞,但是他会立即返回一个Result<T,E> OK 值包含可用的信息,Err 表示没有任何消息,可以通过循环来接受消息,在有可用消息的时候处理消息,其余时候可以处理其他工作,直到再次检查
-    // println!("Go {}", received);
-    //使用循环打印输出
-    for received in rx {
-        println!("Got {received}");
-    }
 }
