@@ -37,6 +37,8 @@ fn main() {
 
     //如果没有self 参数,但trait 和其本身都实现了同一个trait ,那么就要使用完全想定语法;
     println!("A baby dog is called a {}", Dog::baby_name());
+    //当rust 无法区分期望调用具体哪个实现的时候才需要使用这种语法
+    println!("A baby dog is called a {}", <Dog as Animal>::baby_name());
     //------ 为Vec<T> 实现自定义Display trait
     let w = Wrapper(vec![String::from("hello"), String::from("world")]);
     println!("w={}", w);
