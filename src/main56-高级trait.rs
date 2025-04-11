@@ -144,6 +144,9 @@ impl OutlinePrint for Point1 {}
 
 // -------------------- newtype 模式用于在外部类型上实现外部trait --------------------
 //在为类型实现trait 由于有孤儿规则(orphan rule) 他说明只要trait 或者类型对于当前crate 是本地的话,就可以在这个类型上实现trait 一个绕开这个的限制的方法是使用newtype 模式
+// 之所以叫newtype 是因为这种方法会创建一个新的类型 就比如说Wrapper 我们可以在Wrapper 中使用self.0 访问包裹住的需要为其实现外部trait 的类型,就是包了一层 让新的一层Wrapper 和trait 不受制于孤儿原则;
+// 但是这种方法有一个弊端就是 Wrapper 类型不能像其包裹类型那样调用其上存在的方法,如果想要调用其所有方法,那么就要实现其内部类型的所有方法, 但是也有一种更取巧的方法 就是在Wrapper 封装 Deref 方法,Deref 方法就是返回的其内部的类型,那么就可以使用常规解引用来访问其内部值的方法,
+// 如果不希望封装类型拥有内部类型的方法, 就只能自己实现所需要的方法
 // 比如为Vec<T> 实现Display
 struct Wrapper(Vec<String>);
 impl fmt::Display for Wrapper {
